@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><link rel="stylesheet" href="yungking.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Huperoon-Church - Registre GitHub</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="logo-area">
+      <div class="logo-icon">⛪</div>
+      <div class="title">
+        <h1>Huperoon-<span>Church</span></h1>
+        <p>Registre de présence - Stockage GitHub</p>
+      </div>
+    </div>
+    <div class="date-badge" id="liveDate"></div>
+  </div>
+
+  <!-- Bannière GitHub -->
+  <div class="github-banner">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="font-size:48px;">🐙</div>
+      <div>
+        <div style="font-size:14px;opacity:.9;">Stockage GitHub Gist</div>
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span id="liveCount" style="font-size:56px;font-weight:900;line-height:1;">0</span>
+          <span style="font-size:18px;">personnes</span>
+        </div>
+        <div id="liveDetail" style="font-size:13px;margin-top:4px;">Chargement...</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:12px 20px;text-align:right;">
+      <div style="font-size:12px;opacity:.85;margin-bottom:4px;">🔐 Données sur GitHub</div>
+      <div id="syncStatus" style="font-size:13px;font-weight:600;">✅ Prêt</div>
+      <div style="font-size:11px;margin-top:4px;">Synchronisation automatique</div>
+    </div>
+  </div>
+
+  <!-- Panel de configuration GitHub -->
+  <div class="config-panel" id="configPanel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h3 style="color: #333;">🔑 Configuration GitHub</h3>
+      <button onclick="toggleConfig()" style="background: none; border: none; font-size: 20px; cursor: pointer;">▼</button>
+    </div>
+    <div id="configContent">
+      <p style="color: #666; margin-bottom: 10px; font-size: 13px;">📌 Pour utiliser GitHub comme base de données:</p>
+      <ol style="color: #666; margin-bottom: 15px; font-size: 12px; margin-left: 20px;">
+        <li>Créez un <strong>Gist secret</strong> sur <a href="https://gist.github.com" target="_blank">gist.github.com</a></li>
+        <li>Générez un <strong>Personal Access Token</strong> (Settings → Developer settings → Personal access tokens)</li>
+        <li>Entrez les informations ci-dessous</li>
+      </ol>
+      <input type="text" id="githubToken" class="config-input" placeholder="GitHub Personal Access Token" value="">
+      <input type="text" id="githubGistId" class="config-input" placeholder="Gist ID (ex: abc123def456)" value="">
+      <button onclick="saveGitHubConfig()" class="btn-github" style="width: 100%; justify-content: center;">💾 Enregistrer & Synchroniser</button>
+      <button onclick="useDemoMode()" style="width: 100%; margin-top: 10px; padding: 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer;">📱 Utiliser mode démo (stockage local)</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-info"><h3 id="statTotal">0</h3><p>Total inscriptions</p></div><div class="stat-icon">👥</div></div>
+    <div class="stat-card"><div class="stat-info"><h3 id="statPresent">0</h3><p>Présents</p></div><div class="stat-icon">✅</div></div>
+    <div class="stat-card"><div class="stat-info"><h3 id="statMembers">0</h3><p>Membres</p></div><div class="stat-icon">⛪</div></div>
+    <div class="stat-card"><div class="stat-info"><h3 id="statVisitors">0</h3><p>Visiteurs</p></div><div class="stat-icon">🫂</div></div>
+  </div>
+
+  <!-- Formulaire -->
+  <div class="form-section">
+    <div class="form-header"><h2>✝️ Nouvelle inscription</h2><p>Enregistrez une personne - Membre Huperoon ou Visiteur</p></div>
+    <div class="form-body">
+      <div class="form-grid">
+        <div class="form-group"><label>👤 Nom *</label><input type="text" id="inputNom" placeholder="Nom" autocomplete="off"></div>
+        <div class="form-group"><label>📝 Prénom *</label><input type="text" id="inputPrenom" placeholder="Prénom" autocomplete="off"></div>
+        <div class="form-group"><label>📍 Lieu d'habitation</label><input type="text" id="inputLieu" placeholder="Quartier / Ville"></div>
+        <div class="form-group"><label>📧 Email ou Tél</label><input type="text" id="inputContact" placeholder="email@exemple.com ou +225 XX XX XX XX"></div>
+        <div class="form-group">
+          <label>⛪ Statut</label>
+          <select id="inputType">
+            <option value="member">Membre de Huperoon-Church</option>
+            <option value="visitor">Visiteur (autre église)</option>
+          </select>
+        </div>
+        <div class="form-group" id="visitorChurchGroup" style="display:none;">
+          <label>🏛️ Nom de son église</label>
+          <input type="text" id="inputVisitorChurch" placeholder="Nom de l'église">
+        </div>
+      </div>
+      <button class="btn-submit" id="btnSubmit">✨ Enregistrer la présence</button>
+    </div>
+  </div>
+
+  <!-- Liste -->
+  <div class="list-section">
+    <div class="list-toolbar">
+      <h3>📋 Historique des présences <span class="badge-github" id="storageBadge">Stockage local</span></h3>
+      <div class="export-buttons">
+        <button class="btn-github" onclick="syncWithGitHub()">🔄 Synchroniser GitHub</button>
+        <button class="btn-export" onclick="exportToPDF()">📄 Exporter PDF</button>
+      </div>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Tous</button>
+      <button class="filter-btn" data-filter="present">Présents</button>
+      <button class="filter-btn" data-filter="member">Membres</button>
+      <button class="filter-btn" data-filter="visitor">Visiteurs</button>
+    </div>
+    <div style="padding:0 24px 16px;">
+      <input type="text" id="searchInput" placeholder="🔍 Rechercher par nom, prénom, lieu..." style="width:100%;max-width:320px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px;">
+    </div>
+    <div class="table-wrapper">
+      <table id="mainTable">
+        <thead><tr><th></th><th>Nom complet</th><th>Lieu</th><th>Contact</th><th>Statut</th><th>Date</th><th></th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="empty-state-icon">📭</div>
+        <p>Aucun enregistrement</p>
+        <p style="font-size:12px; margin-top:8px;">👇 Enregistrez une personne ci-dessus</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ========== CONFIGURATION GITHUB ==========
+let githubToken = localStorage.getItem('github_token') || '';
+let githubGistId = localStorage.getItem('github_gist_id') || '';
+let people = [];
+let currentFilter = 'all';
+let prevCount = -1;
+let useGitHub = false;
+
+// Fonctions utilitaires
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+}
+
+// Gestion du formulaire
+document.getElementById('inputType').addEventListener('change', function() {
+  document.getElementById('visitorChurchGroup').style.display = 
+    this.value === 'visitor' ? 'block' : 'none';
+});
+
+function clearForm() {
+  ['inputNom', 'inputPrenom', 'inputLieu', 'inputContact', 'inputVisitorChurch'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('inputType').value = 'member';
+  document.getElementById('visitorChurchGroup').style.display = 'none';
+  document.getElementById('inputNom').focus();
+}
+
+// Stats
+function updateStats() {
+  const total = people.length;
+  const present = people.filter(p => p.status === 'present').length;
+  const members = people.filter(p => p.is_member === true || p.is_member === 1).length;
+  const visitors = people.filter(p => p.is_member === false || p.is_member === 0).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statPresent').textContent = present;
+  document.getElementById('statMembers').textContent = members;
+  document.getElementById('statVisitors').textContent = visitors;
+  
+  const el = document.getElementById('liveCount');
+  if (prevCount !== total) {
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
+    prevCount = total;
+  }
+  el.textContent = total;
+  document.getElementById('liveDetail').innerHTML = `⛪ ${members} membre${members !== 1 ? 's' : ''}  ·  🫂 ${visitors} visiteur${visitors !== 1 ? 's' : ''}`;
+}
+
+// ========== STOCKAGE LOCAL (fallback) ==========
+function saveToLocalStorage() {
+  localStorage.setItem('huperoon_presences', JSON.stringify(people));
+  localStorage.setItem('huperoon_last_update', new Date().toISOString());
+}
+
+function loadFromLocalStorage() {
+  const saved = localStorage.getItem('huperoon_presences');
+  if (saved) {
+    people = JSON.parse(saved);
+  } else {
+    // Données d'exemple
+    people = [
+      { id: 1, nom: 'KOUASSI', prenom: 'Jean', lieu: 'Cocody', contact: '0102030405', is_member: true, church_name: null, date: new Date().toISOString(), status: 'present' },
+      { id: 2, nom: 'KONAN', prenom: 'Marie', lieu: 'Plateau', contact: '0506070809', is_member: false, church_name: 'Eglise Evangelique', date: new Date().toISOString(), status: 'present' },
+      { id: 3, nom: 'DIOP', prenom: 'Amadou', lieu: 'Treichville', contact: '0708091011', is_member: true, church_name: null, date: new Date(Date.now() - 86400000).toISOString(), status: 'present' }
+    ];
+    saveToLocalStorage();
+  }
+  updateStats();
+  renderList();
+  document.getElementById('storageBadge').textContent = '💾 Stockage local';
+  document.getElementById('storageBadge').style.background = '#6c757d';
+}
+
+// ========== STOCKAGE GITHUB GIST ==========
+async function saveToGitHub() {
+  if (!githubToken || !githubGistId) {
+    showToast('❌ Configurez GitHub d\'abord', 'error');
+    return false;
+  }
+  
+  try {
+    const data = {
+      description: 'Huperoon-Church - Registre de présence',
+      public: false,
+      files: {
+        'presences.json': {
+          content: JSON.stringify(people, null, 2)
+        }
+      }
+    };
+    
+    const response = await fetch(`https://api.github.com/gists/${githubGistId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (response.ok) {
+      showToast('✅ Synchronisé avec GitHub', 'success');
+      localStorage.setItem('github_last_sync', new Date().toISOString());
+      return true;
+    } else {
+      const error = await response.json();
+      throw new Error(error.message || 'Erreur GitHub');
+    }
+  } catch (error) {
+    console.error('GitHub save error:', error);
+    showToast('❌ Erreur GitHub: ' + error.message, 'error');
+    return false;
+  }
+}
+
+async function loadFromGitHub() {
+  if (!githubToken || !githubGistId) {
+    return false;
+  }
+  
+  try {
+    const response = await fetch(`https://api.github.com/gists/${githubGistId}`, {
+      headers: {
+        'Authorization': `token ${githubToken}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (response.ok) {
+      const gist = await response.json();
+      const content = gist.files['presences.json']?.content;
+      if (content) {
+        const data = JSON.parse(content);
+        if (Array.isArray(data)) {
+          people = data;
+          saveToLocalStorage(); // Backup local
+          updateStats();
+          renderList();
+          document.getElementById('storageBadge').textContent = '🐙 GitHub Gist';
+          document.getElementById('storageBadge').style.background = '#24292e';
+          showToast('📥 Données chargées depuis GitHub', 'success');
+          return true;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('GitHub load error:', error);
+  }
+  return false;
+}
+
+async function syncWithGitHub() {
+  if (!githubToken || !githubGistId) {
+    showToast('⚠️ Configurez votre token GitHub et Gist ID d\'abord', 'info');
+    document.getElementById('configContent').style.display = 'block';
+    return;
+  }
+  
+  showToast('🔄 Synchronisation en cours...', 'info');
+  
+  // D'abord sauvegarder sur GitHub
+  const saved = await saveToGitHub();
+  if (saved) {
+    // Ensuite charger pour s'assurer
+    await loadFromGitHub();
+  }
+}
+
+function saveGitHubConfig() {
+  const token = document.getElementById('githubToken').value.trim();
+  const gistId = document.getElementById('githubGistId').value.trim();
+  
+  if (token && gistId) {
+    githubToken = token;
+    githubGistId = gistId;
+    localStorage.setItem('github_token', token);
+    localStorage.setItem('github_gist_id', gistId);
+    showToast('✅ Configuration GitHub sauvegardée', 'success');
+    
+    // Tester la connexion
+    loadFromGitHub().then(success => {
+      if (!success) {
+        showToast('⚠️ Impossible de charger depuis GitHub. Vérifiez votre token et Gist ID', 'error');
+      }
+    });
+  } else {
+    showToast('❌ Entrez un token et un Gist ID valides', 'error');
+  }
+}
+
+function toggleConfig() {
+  const content = document.getElementById('configContent');
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+  } else {
+    content.style.display = 'none';
+  }
+}
+
+function useDemoMode() {
+  githubToken = '';
+  githubGistId = '';
+  localStorage.removeItem('github_token');
+  localStorage.removeItem('github_gist_id');
+  document.getElementById('githubToken').value = '';
+  document.getElementById('githubGistId').value = '';
+  loadFromLocalStorage();
+  showToast('📱 Mode démo activé (stockage local uniquement)', 'info');
+}
+
+// ========== GESTION DES PERSONNES ==========
+async function addPerson() {
+  const nom = document.getElementById('inputNom').value.trim();
+  const prenom = document.getElementById('inputPrenom').value.trim();
+
+  if (!nom || !prenom) {
+    showToast('Veuillez remplir le nom et le prénom', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.textContent = '⏳ Envoi...';
+
+  const newPerson = {
+    id: Date.now(),
+    nom: nom,
+    prenom: prenom,
+    lieu: document.getElementById('inputLieu').value.trim() || '',
+    contact: document.getElementById('inputContact').value.trim() || '',
+    is_member: document.getElementById('inputType').value === 'member',
+    church_name: document.getElementById('inputVisitorChurch').value.trim() || null,
+    date: new Date().toISOString(),
+    status: 'present'
+  };
+
+  people.unshift(newPerson);
+  saveToLocalStorage();
+  
+  // Si configuré, sauvegarder sur GitHub
+  if (githubToken && githubGistId) {
+    await saveToGitHub();
+  }
+  
+  updateStats();
+  renderList();
+  clearForm();
+  showToast(`✅ ${prenom} ${nom} enregistré(e) !`, 'success');
+  
+  btn.disabled = false;
+  btn.textContent = '✨ Enregistrer la présence';
+}
+
+async function deletePerson(id) {
+  if (!confirm('Supprimer cet enregistrement ?')) return;
+
+  people = people.filter(p => p.id != id);
+  saveToLocalStorage();
+  
+  if (githubToken && githubGistId) {
+    await saveToGitHub();
+  }
+  
+  updateStats();
+  renderList();
+  showToast('🗑️ Supprimé', 'success');
+}
+
+// ========== FILTRES ET AFFICHAGE ==========
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    if (btn.dataset.filter === filter) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  renderList();
+}
+
+function renderList() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  let filtered = [...people];
+
+  if (currentFilter === 'present') filtered = filtered.filter(p => p.status === 'present');
+  if (currentFilter === 'member') filtered = filtered.filter(p => p.is_member === true || p.is_member === 1);
+  if (currentFilter === 'visitor') filtered = filtered.filter(p => p.is_member === false || p.is_member === 0);
+
+  if (search) {
+    filtered = filtered.filter(p =>
+      (p.nom || '').toLowerCase().includes(search) ||
+      (p.prenom || '').toLowerCase().includes(search) ||
+      (p.lieu || '').toLowerCase().includes(search) ||
+      (p.contact || '').toLowerCase().includes(search)
+    );
+  }
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+  const table = document.getElementById('mainTable');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  table.style.display = 'table';
+
+  tbody.innerHTML = filtered.map(p => {
+    const initials = ((p.nom || '')[0] || '') + ((p.prenom || '')[0] || '');
+    const badge = (p.is_member === true || p.is_member === 1)
+      ? `<span class="member-badge">⛪ Membre de Huperoon-Church</span>`
+      : `<span class="visitor-badge">🫂 Visiteur (${escapeHtml(p.church_name || 'Non renseignée')})</span>`;
+    const date = new Date(p.date).toLocaleString('fr-FR');
+    return `
+      <tr>
+        <td data-label="Avatar"><div class="avatar">${escapeHtml(initials.toUpperCase())}</div></td>
+        <td data-label="Nom"><strong>${escapeHtml(p.nom)}</strong> ${escapeHtml(p.prenom)}</td>
+        <td data-label="Lieu">${escapeHtml(p.lieu) || '—'}</td>
+        <td data-label="Contact">${escapeHtml(p.contact) || '—'}</td>
+        <td data-label="Statut">${badge}</td>
+        <td data-label="Date">${date}</td>
+        <td data-label="Action"><button class="delete-btn" onclick="deletePerson(${p.id})">🗑️</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ========== EXPORT PDF ==========
+async function exportToPDF() {
+  if (people.length === 0) { 
+    showToast('Aucune donnée à exporter', 'error'); 
+    return; 
+  }
+  
+  showToast('Génération PDF...', 'info');
+  
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const now = new Date();
+    
+    doc.setFontSize(22);
+    doc.setTextColor(102, 126, 234);
+    doc.text('Huperoon-Church', 20, 20);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Registre de Présence', 20, 30);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Généré le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR')} — ${people.length} enregistrement(s)`, 20, 38);
+
+    doc.autoTable({
+      head: [['N°', 'Nom', 'Prénom', 'Lieu', 'Contact', 'Statut', 'Église', 'Date']],
+      body: people.map((p, i) => [
+        i + 1, 
+        p.nom, 
+        p.prenom, 
+        p.lieu || '—', 
+        p.contact || '—',
+        (p.is_member === true || p.is_member === 1) ? 'Membre' : 'Visiteur',
+        (p.is_member === true || p.is_member === 1) ? 'Huperoon-Church' : (p.church_name || '—'),
+        new Date(p.date).toLocaleString('fr-FR')
+      ]),
+      startY: 45,
+      theme: 'striped',
+      headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 3 },
+      margin: { left: 15, right: 15 }
+    });
+    
+    doc.save(`huperoon_${now.toLocaleDateString('fr-FR').replace(/\//g, '-')}.pdf`);
+    showToast('✅ PDF généré !', 'success');
+  } catch(e) {
+    console.error('Erreur PDF:', e);
+    showToast('❌ Erreur PDF', 'error');
+  }
+}
+
+// ========== HORLOGE ==========
+function updateClock() {
+  document.getElementById('liveDate').textContent = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+// ========== INITIALISATION ==========
+// Charger config sauvegardée
+const savedToken = localStorage.getItem('github_token');
+const savedGistId = localStorage.getItem('github_gist_id');
+if (savedToken && savedGistId) {
+  githubToken = savedToken;
+  githubGistId = savedGistId;
+  document.getElementById('githubToken').value = savedToken;
+  document.getElementById('githubGistId').value = savedGistId;
+  // Tenter de charger depuis GitHub
+  loadFromGitHub().then(success => {
+    if (!success) loadFromLocalStorage();
+  });
+} else {
+  loadFromLocalStorage();
+}
+
+// Événements
+document.getElementById('btnSubmit').onclick = addPerson;
+document.getElementById('searchInput').oninput = renderList;
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.onclick = () => setFilter(btn.dataset.filter);
+});
+
+updateClock();
+setInterval(updateClock, 1000);
+
+// Exposer fonctions globales
+window.deletePerson = deletePerson;
+window.syncWithGitHub = syncWithGitHub;
+window.saveGitHubConfig = saveGitHubConfig;
+window.toggleConfig = toggleConfig;
+window.useDemoMode = useDemoMode;
+window.exportToPDF = exportToPDF;
+</script>
+</body>
+</html>
